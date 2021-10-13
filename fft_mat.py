@@ -57,21 +57,30 @@ derive_by_t = lambda vec: num_of_frames * np.diff(vec)
 velocities = [v_x, v_y, v_z] = list(map(derive_by_t, [x,y,z]))
 accelerations = [a_x, a_y, a_z] = list(map(derive_by_t, (v_x, v_y, v_z)))
 
-v_fft_decomp = list(map(abs, map(fft, velocities)))
+v_fft_decomp = list(map(np.abs, map(fft, velocities)))
 a_fft_decomp = list(map(abs,map(fft, accelerations)))
 
-print(len(v_fft_decomp[0]))
-print(len(v_fft_decomp[1]))
-print(len(v_x))
 dim = 3
 plot_linewidth = 0.5
 fig, axs = plt.subplots(4, dim, sharex=True)
 fig.suptitle('{}'.format(lables[joint_num]))
+t_v_f = fftfreq(velocities[0].shape[0], delta_t_sec)
+t_a_f = fftfreq(accelerations[0].shape[0], delta_t_sec)
+
 for i in range(dim): 
     axs[0,i].plot(velocities[i], linewidth=plot_linewidth)
-    axs[1,i].plot(v_fft_decomp[i][500:-500], c='green', linewidth=plot_linewidth)
+    # axs[1,i].plot(v_fft_decomp[i][500:-500], c='green', linewidth=plot_linewidth)
+    axs[1,i].plot(
+        t_v_f,
+        v_fft_decomp[i], 
+        c='green', linewidth=plot_linewidth
+    )
     axs[2,i].plot(accelerations[i], c='orange', linewidth=plot_linewidth)
-    axs[3,i].plot(a_fft_decomp[i][500:-500], c='red', linewidth=plot_linewidth)
+    axs[3,i].plot(
+        t_a_f,
+        a_fft_decomp[i], 
+        c='red', linewidth=plot_linewidth
+        )
 
     axs[0,i].set_title(['X component','Y component','Z component'][i])
     
