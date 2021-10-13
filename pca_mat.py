@@ -1,22 +1,33 @@
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import scipy.io as sio
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 
-mat = sio.loadmat('data_files/AIM_model_movements0004.mat')
-num_of_frames = mat['AIM_model_movements0004']['Frames'][0][0].flatten()[0]
-delta_t_sec = 1 / num_of_frames
-frame_rate = mat['AIM_model_movements0004']['FrameRate'][0][0].flatten()[0]
-data = mat['AIM_model_movements0004']['Trajectories'][0][0]['Labeled'][0][0]
+# Load .mat file
+file_name = 'Barak_test'
+data_folder = Path.cwd() / Path("data_files/")
+file_to_open = data_folder / file_name
+mat = sio.loadmat(str(file_to_open))
 
-lables = data['Labels'][0][0][0].flatten()
+# Guess table name and extract info
+table_name = list(mat.keys())[-1]
+M = mat[table_name]
+file_timestamp = M['Timestamp'][0][0].flatten()
+num_of_frames = M['Frames'][0][0].flatten()[0]
+frame_rate = M['FrameRate'][0][0].flatten()[0]
+delta_t_sec = 1 / frame_rate
 
+## data's keys:
+## ['Count', 'O'), ('Labels', 'O'), ('Data', 'O'), ('Type', 'O'), ('TrajectoryType', 'O')]
+labeled_traj = M['Trajectories'][0][0]['Labeled'][0][0]
+
+lables = labeled_traj['Labels'][0][0][0].flatten()
 lables_df = pd.DataFrame(data=lables, index=None, columns=None)
-data_count = data['Count'][0][0].flatten()[0]
+data_count = labeled_traj['Count'][0][0].flatten()[0]
 
-# data.shape -> (37, 4, 42000)
-data = data['Data'][0][0]
+data = labeled_traj['Data'][0][0]
 data_df_list = [ pd.DataFrame(data=data[i], index=None, columns=None) for i in range(len(lables)) ]
 
 print(lables.shape)
