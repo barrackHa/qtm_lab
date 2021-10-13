@@ -49,8 +49,10 @@ tmp = pd.DataFrame(data=marker.T[0], index=None, columns=None)
 [x,y,z] = data[0][0:3]
 # v_x = np.diff(x)
 # print(x.shape)
-velocities = [v_x, v_y, v_z] = list(map(np.diff, (x,y,z)))
-accelerations = [a_x, a_y, a_z] = list(map(np.diff, (v_x, v_y, v_z)))
+
+derive_by_t = lambda vec: num_of_frames * np.diff(x) 
+velocities = [v_x, v_y, v_z] = list(map(derive_by_t, (x,y,z)))
+accelerations = [a_x, a_y, a_z] = list(map(derive_by_t, (v_x, v_y, v_z)))
 
 v_fft_decomp = list(map(abs, map(fft, velocities)))
 a_fft_decomp = list(map(abs,map(fft, accelerations)))
@@ -64,14 +66,13 @@ for i in range(dim):
     axs[1,i].plot(v_fft_decomp[i], c='green', linewidth=plot_linewidth)
     axs[2,i].plot(accelerations[i], c='orange', linewidth=plot_linewidth)
     axs[3,i].plot(a_fft_decomp[i], c='red', linewidth=plot_linewidth)
+
+    axs[0,i].set_title(['X component','Y component','Z component'][i])
     
 axs[0,0].set(ylabel='velocity')
 axs[1,0].set(ylabel='v_fft_decomp')
 axs[2,0].set(ylabel='acceleration')
 axs[3,0].set(ylabel='a_fft_decomp')
-
-axs[0,0].set_title(['X component','Y component','Z component'][i])
-
 
 plt.show()
 # syntax for 3-D projection
