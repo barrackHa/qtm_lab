@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import scipy.io as sio
 import matplotlib.pyplot as plt
+from scipy.fft import fft
 
 mat = sio.loadmat('data_files/AIM_model_movements0004.mat')
 
@@ -50,18 +51,26 @@ tmp = pd.DataFrame(data=marker.T[0], index=None, columns=None)
 # print(x.shape)
 velocities = [v_x, v_y, v_z] = list(map(np.diff, (x,y,z)))
 accelerations = [a_x, a_y, a_z] = list(map(np.diff, (v_x, v_y, v_z)))
-print(a_z.shape)
+
+v_fft_decomp = list(map(abs, map(fft, velocities)))
+a_fft_decomp = list(map(abs,map(fft, accelerations)))
 
 dim = 3
 plot_linewidth = 0.5
-fig, axs = plt.subplots(2, dim, sharex=True)
+fig, axs = plt.subplots(4, dim, sharex=True)
 fig.suptitle('{}'.format(lables[joint_num]))
 for i in range(dim): 
     axs[0,i].plot(velocities[i], linewidth=plot_linewidth)
-    axs[1,i].plot(accelerations[i], c='orange', linewidth=plot_linewidth)
-    axs[0,i].set(ylabel='velocity')
-    axs[1,i].set(ylabel='acceleration')
-    axs[0,i].set_title(['X component','Y component','Z component'][i])
+    axs[1,i].plot(v_fft_decomp[i], c='green', linewidth=plot_linewidth)
+    axs[2,i].plot(accelerations[i], c='orange', linewidth=plot_linewidth)
+    axs[3,i].plot(a_fft_decomp[i], c='red', linewidth=plot_linewidth)
+    
+axs[0,0].set(ylabel='velocity')
+axs[1,0].set(ylabel='v_fft_decomp')
+axs[2,0].set(ylabel='acceleration')
+axs[3,0].set(ylabel='a_fft_decomp')
+
+axs[0,0].set_title(['X component','Y component','Z component'][i])
 
 
 plt.show()
