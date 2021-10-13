@@ -1,75 +1,62 @@
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import scipy.io as sio
 import matplotlib.pyplot as plt
 from scipy.fft import fft, fftfreq
 
-# mat = sio.loadmat('data_files/AIM_model_movements0004.mat')
+# Load .mat file
 file_name = 'Barak_test'
-mat = sio.loadmat('data_files/{}'.format(file_name))
+data_folder = Path.cwd() / Path("data_files/")
+file_to_open = data_folder / file_name
+mat = sio.loadmat(str(file_to_open))
 
-# print(mat['AIM_model_movements0004'].dtype)
+# Guess table name and extract info
+table_name = list(mat.keys())[-1]
+M = mat[table_name]
+file_timestamp = M['Timestamp'][0][0].flatten()
+num_of_frames = M['Frames'][0][0].flatten()[0]
+frame_rate = M['FrameRate'][0][0].flatten()[0]
+delta_t_sec = 1 / frame_rate
 
-# print(mat['AIM_model_movements0004']['File'])
-file_timestamp = mat[file_name]['Timestamp'][0][0].flatten()
-# print(file_timestamp)
-# print(mat['AIM_model_movements0004']['StartFrame'])
-num_of_frames = mat[file_name]['Frames'][0][0].flatten()[0]
-delta_t_sec = 1 / num_of_frames
-# print(type(delta_t_sec))
-frame_rate = mat[file_name]['FrameRate'][0][0].flatten()[0]
-# print(frame_rate)
-# print(mat['AIM_model_movements0004']['Events'])
-# print(mat['AIM_model_movements0004']['Trajectories'][0][0]['Labeled'][0][0].dtype)
-# print(mat['AIM_model_movements0004']['Trajectories'][0][0]['Unidentified'])
+## data's keys:
+## ['Count', 'O'), ('Labels', 'O'), ('Data', 'O'), ('Type', 'O'), ('TrajectoryType', 'O')]
+labeled_traj = M['Trajectories'][0][0]['Labeled'][0][0]
 
-data = mat[file_name]['Trajectories'][0][0]['Labeled'][0][0]
-# 'Count', 'O'), ('Labels', 'O'), ('Data', 'O'), ('Type', 'O'), ('TrajectoryType', 'O')]
-lables = data['Labels'][0][0][0].flatten()
-# print(len(lables))
+lables = labeled_traj['Labels'][0][0][0].flatten()
 lables_df = pd.DataFrame(data=lables, index=None, columns=None)
-data_count = data['Count'][0][0].flatten()[0]
-# print(data_count)
-# print(data['Data'][0][0][0][:][0].shape)
+data_count = labeled_traj['Count'][0][0].flatten()[0]
 
-# print(data['Type'][0][0].shape)
-# print(data['TrajectoryType'][0][0])
-
-# data.shape -> (37, 4, 42000)
-data = data['Data'][0][0]
+data = labeled_traj['Data'][0][0]
 data_df_list = [ pd.DataFrame(data=data[i], index=None, columns=None) for i in range(len(lables)) ]
-# print(data_df[0][0])
-# data = data.reshape(42000,37,4)
-joint_num = 0
-marker = data[joint_num]
-tmp = pd.DataFrame(data=marker.T[0], index=None, columns=None)
-# print(tmp.head())
-# print(data[1][1][0])
-# print(data[1][2][0])
-# print(data_df_list[0].head())
 
+joint_index = 0
+marker = data[joint_index]
+marker_df = pd.DataFrame(data=marker.T[0], index=None, columns=None)
+
+# Split by axes
 [x,y,z] = data[0][0:3]
 
-# v_x = np.diff(x)
-# print(x.shape)
-
-derive_by_t = lambda vec: num_of_frames * np.diff(vec) 
+# Compute local velocity and acceleration acoording to :
+# velocity = dx/dt, acceleration = dv/dt
+derive_by_t = lambda vec:  np.diff(vec) / delta_t_sec
 velocities = [v_x, v_y, v_z] = list(map(derive_by_t, [x,y,z]))
 accelerations = [a_x, a_y, a_z] = list(map(derive_by_t, (v_x, v_y, v_z)))
 
+# Furier 
 v_fft_decomp = list(map(np.abs, map(fft, velocities)))
 a_fft_decomp = list(map(abs,map(fft, accelerations)))
 
+# Create plots
 dim = 3
 plot_linewidth = 0.5
-fig, axs = plt.subplots(4, dim, sharex=True)
-fig.suptitle('{}'.format(lables[joint_num]))
+fig, axs = plt.subplots(4, dim, sharex=False)
+fig.suptitle('{}'.format(lables[joint_index]))
 t_v_f = fftfreq(velocities[0].shape[0], delta_t_sec)
 t_a_f = fftfreq(accelerations[0].shape[0], delta_t_sec)
 
 for i in range(dim): 
     axs[0,i].plot(velocities[i], linewidth=plot_linewidth)
-    # axs[1,i].plot(v_fft_decomp[i][500:-500], c='green', linewidth=plot_linewidth)
     axs[1,i].plot(
         t_v_f,
         v_fft_decomp[i], 
@@ -80,7 +67,7 @@ for i in range(dim):
         t_a_f,
         a_fft_decomp[i], 
         c='red', linewidth=plot_linewidth
-        )
+    )
 
     axs[0,i].set_title(['X component','Y component','Z component'][i])
     
