@@ -37,17 +37,36 @@ data = data['Data'][0][0]
 data_df_list = [ pd.DataFrame(data=data[i], index=None, columns=None) for i in range(len(lables)) ]
 # print(data_df[0][0])
 # data = data.reshape(42000,37,4)
-marker = data[1]
+joint_num = 1
+marker = data[joint_num]
 tmp = pd.DataFrame(data=marker.T[0], index=None, columns=None)
 # print(tmp.head())
 # print(data[1][1][0])
 # print(data[1][2][0])
 # print(data_df_list[0].head())
 
-# fig = plt.figure()
-# x,y,z,c = data_df[0]
-# # syntax for 3-D projection
+[x,y,z] = data[0][0:3]
+# v_x = np.diff(x)
+# print(x.shape)
+velocities = [v_x, v_y, v_z] = list(map(np.diff, (x,y,z)))
+accelerations = [a_x, a_y, a_z] = list(map(np.diff, (v_x, v_y, v_z)))
+print(a_z.shape)
+
+dim = 3
+plot_linewidth = 0.5
+fig, axs = plt.subplots(2, dim, sharex=True)
+fig.suptitle('{}'.format(lables[joint_num]))
+for i in range(dim): 
+    axs[0,i].plot(velocities[i], linewidth=plot_linewidth)
+    axs[1,i].plot(accelerations[i], c='orange', linewidth=plot_linewidth)
+    axs[0,i].set(ylabel='velocity')
+    axs[1,i].set(ylabel='acceleration')
+    axs[0,i].set_title(['X component','Y component','Z component'][i])
+
+
+plt.show()
+# syntax for 3-D projection
 # ax = plt.axes(projection ='3d')
-# ax.scatter(x, y, z, c=c)
+# ax.scatter(x, y, z, s=0.1)
 
 # plt.show()
