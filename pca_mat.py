@@ -1,9 +1,11 @@
 from pathlib import Path
+from matplotlib import colors
 import numpy as np
 import pandas as pd
 import scipy.io as sio
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 
 # Load .mat file
 file_name = 'Barak_test'
@@ -30,10 +32,30 @@ data_count = labeled_traj['Count'][0][0].flatten()[0]
 data = labeled_traj['Data'][0][0]
 data_df_list = [ pd.DataFrame(data=data[i], index=None, columns=None) for i in range(len(lables)) ]
 
-print(lables.shape)
-print(data[0].flatten().shape)
 
-samples_for_pca = dict()
-for i in range(len(lables)):
-    samples_for_pca[lables[i][0]] = data[i].flatten()
+colors = ['blue', 'red']
+all_v = np.array([[],[],[]])
+ax = plt.axes(projection ='3d')
+for marker in data:
+    marker_df = pd.DataFrame(data=marker.T[0], index=None, columns=None)
 
+    # Split by axes
+    [x,y,z] = data[0][0:3]
+
+    # Compute local velocity and acceleration acoording to :
+    # velocity = dx/dt, acceleration = dv/dt
+    derive_by_t = lambda vec:  np.diff(vec) / delta_t_sec
+    velocities = [v_x, v_y, v_z] = list(map(derive_by_t, [x,y,z]))
+    all_v = np.array([
+        np.concatenate((all_v[0], v_x)), 
+        np.concatenate((all_v[1], v_y)), 
+        np.concatenate((all_v[2], v_z))
+    ])
+
+    ax.scatter(v_x, v_y, v_z, s=0.1, c=colors.pop())
+
+pca = PCA(n_components=2)
+x = StandardScaler().fit_transform(all_v)
+principalComponents = pca.fit_transform(x)
+print(principalComponents)
+plt.show()
