@@ -26,11 +26,10 @@ class QTM():
         self.data_count = self.labeled_traj['Count'][0][0].flatten()[0]
         self.data = self.labeled_traj['Data'][0][0]
         self.data_df_list = [ 
-            pd.DataFrame(data=self.data[i], index=None, columns=None) \
+            pd.DataFrame(data=self.data[i], index=['x','y','z','r'], columns=None) \
             for i in range(len(self.lables)
         )]
-
-
+        return
 
     def __load_mat_file__(self, file_name):
         """
@@ -40,6 +39,9 @@ class QTM():
         file_to_open = data_folder / file_name
         return sio.loadmat(str(file_to_open))
 
+    @property
+    def markers(self):
+        return [ self.lables[0][0], self.lables[1][0] ]
 
 if __name__ == '__main__':
     file_name = 'Barak_test'
@@ -50,11 +52,12 @@ if __name__ == '__main__':
 
     joint_index = 0
     marker = data[joint_index]
-    marker_df = pd.DataFrame(data=marker.T[0], index=None, columns=None)
-
+    marker_df = pd.DataFrame(data=marker.T[0], index=['x','y','z','r'], columns=None)
+    
     # Split by axes
-    [x,y,z] = data[0][0:3]
+    arr = [x,y,z] = qtm.data[joint_index][0:3]
 
+    
     # Compute local velocity and acceleration acoording to :
     # velocity = dx/dt, acceleration = dv/dt
     derive_by_t = lambda vec:  np.diff(vec) / delta_t_sec
