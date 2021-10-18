@@ -2,6 +2,7 @@ from pathlib import Path
 from matplotlib import colors
 import numpy as np
 import pandas as pd
+from pandas.core.frame import DataFrame
 import scipy.io as sio
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
@@ -21,8 +22,10 @@ num_of_frames = M['Frames'][0][0].flatten()[0]
 frame_rate = M['FrameRate'][0][0].flatten()[0]
 delta_t_sec = 1 / frame_rate
 
+# Every marker (label) has x,y and z coordinates and an error estimate - r 
+comp_per_marker = 'xyzr'
+
 ## data's keys:
-## ['Count', 'O'), ('Labels', 'O'), ('Data', 'O'), ('Type', 'O'), ('TrajectoryType', 'O')]
 labeled_traj = M['Trajectories'][0][0]['Labeled'][0][0]
 
 lables = labeled_traj['Labels'][0][0][0].flatten()
@@ -32,16 +35,83 @@ data_count = labeled_traj['Count'][0][0].flatten()[0]
 data = labeled_traj['Data'][0][0]
 data_df_list = [ pd.DataFrame(data=data[i], index=None, columns=None) for i in range(len(lables)) ]
 
-new_data = data.reshape((8, 14000))
+new_data = data.reshape((len(lables)*4 , int(num_of_frames)))
+
 new_df = pd.DataFrame(
-    data=new_data, 
-    index=['p_i_{}'.format(c) for c in 'xyzr'*2], 
-    columns=None
+    data=new_data.T, 
+    index=None, 
+    columns=np.array(
+        [[ 
+            '{}_{}'.format(i[0], c) for c in comp_per_marker] 
+            for i in lables ]
+    ).flatten()
 )
 
+derive_by_t = lambda vec:  np.diff(vec) / delta_t_sec
+# velocities = [v_x, v_y, v_z] = list(map(derive_by_t, [x,y,z]))
+# accelerations = [a_x, a_y, a_z] = list(map(derive_by_t, (v_x, v_y, v_z)))
 
-print(data.shape)
-print(new_data.shape)
+# print(new_data[3].shape)
 
 # print(data_df_list[1].head(n=8))
-print(new_df.head(n=8))
+
+# print(new_df.iloc[0].to_numpy())
+
+velocity_indices = []
+for l in lables:
+    for c in comp_per_marker[:-1]:
+        l = l[0]
+        new_cul_name, cul_to_derive = l + '_V' + c, l + '_' + c 
+        new_df[new_cul_name] = new_df[cul_to_derive].diff().div(delta_t_sec)
+        velocity_indices.append(new_cul_name)
+
+v_is = []
+for l in lables:
+    l = l[0]
+    v = (new_df[l+'_Vx']*new_df[l+'_Vx']) + (new_df[l+'_Vy'] * new_df[l+'_Vy']) + (new_df[l+'_Vz'] * new_df[l+'_Vz'])
+    new_df[l + '_v'] = v
+    v_is.append(l + '_v')
+
+
+
+# print(DataFrame(data = (new_df['A_v'] / new_df['B_v'])).describe())
+X = new_df[velocity_indices].values[1:]
+# Standardizing the features
+X = StandardScaler().fit_transform(X)
+
+pca = PCA(n_components=len(velocity_indices))
+principalComponents = pca.fit_transform(X)
+explained_variance_sum = sum(pca.explained_variance_)
+pc_labales = [
+    'pc_{}({}%)'.format(str(i+1), 
+        int(100 * (pca.explained_variance_[i] / explained_variance_sum))
+    ) \
+    for i in range(len(pca.explained_variance_))
+]
+# print(new_df[velocity_indices].head())
+
+# print(pd.DataFrame(data=X, columns=velocity_indices).head())
+
+# print(principalComponents.shape)
+pca_df = pd.DataFrame(data=principalComponents, columns=pc_labales)
+# print(pca_df.head())
+print(new_df[velocity_indices].head())
+
+# print(pca.components_)
+# print(pca.explained_variance_)
+plt.bar(
+    pc_labales, 
+    pca.explained_variance_
+)
+
+fig = plt.figure()
+plt.plot(
+    np.arange(1, len(pca.explained_variance_)+1 ), 
+    pca.explained_variance_, 
+    'ro-', linewidth=2
+)
+plt.title('Scree Plot')
+
+pca_df.plot.scatter(x=pc_labales[0], y=pc_labales[1])
+# plt.show()
+

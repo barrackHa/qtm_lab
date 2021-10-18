@@ -36,7 +36,7 @@ data_df_list = [ pd.DataFrame(data=data[i], index=None, columns=None) for i in r
 colors = ['blue', 'red']
 all_v = np.array([[],[],[]])
 ax = plt.axes(projection ='3d')
-for marker in data[0]:
+for marker in data:
     marker_df = pd.DataFrame(data=marker.T[0], index=None, columns=None)
 
     # Split by axes
