@@ -1,3 +1,4 @@
+from os import error
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -21,15 +22,31 @@ class QTM():
         self.frame_rate = M['FrameRate'][0][0].flatten()[0]
         self.delta_t_sec = 1 / self.frame_rate
         self.labeled_traj = M['Trajectories'][0][0]['Labeled'][0][0]
-        self.lables = self.labeled_traj['Labels'][0][0][0].flatten()
-        self.lables_df = pd.DataFrame(data=self.lables, index=None, columns=None)
+        self.__labels = self.labeled_traj['Labels'][0][0][0]
+        self.labels_df = pd.DataFrame(data=self.labels , index=None, columns=['Lable_Name'])
         self.data_count = self.labeled_traj['Count'][0][0].flatten()[0]
-        self.data = self.labeled_traj['Data'][0][0]
+        self.__data = self.labeled_traj['Data'][0][0]
         self.data_df_list = [ 
             pd.DataFrame(data=self.data[i], index=['x','y','z','r'], columns=None) \
-            for i in range(len(self.lables)
+            for i in range(len(self.labels)
         )]
         return
+
+    @property
+    def markers(self):
+        return [ self.lables[0][0], self.lables[1][0] ]
+
+    @property
+    def data(self):
+        return self.__data
+
+    @property
+    def labels(self):
+        return [l[0] for l in self.__labels]
+
+    @property
+    def derive_by_t(self):
+        return lambda vec: np.diff(vec) / self.delta_t_sec
 
     def __load_mat_file__(self, file_name):
         """
@@ -39,35 +56,56 @@ class QTM():
         file_to_open = data_folder / file_name
         return sio.loadmat(str(file_to_open))
 
-    @property
-    def markers(self):
-        return [ self.lables[0][0], self.lables[1][0] ]
+    def get_joint_velocities_decomp(self, joint):
+        """
+        @Param joint is ither a label or a joint index as shown by self.labels_df
+        Returns the velocities decomposition by axis for the specified joint.
+        """
+        try:
+            [x,y,z] = self.data[joint][0:3]
+        except:
+            try:
+                idx = self.labels.index(str(joint))
+                [x,y,z] = self.data[idx][0:3]
+            except:
+                raise Exception(
+                    '"joint" must be a valid key or key index from:\n{}'\
+                        .format(self.labels)
+                )
+        # Return a list of velocities [v_x, v_y, v_z]
+        return list(map(self.derive_by_t, [x,y,z]))
+
+    def get_joint_accelerations_decomp(self, joint):
+        v_decomp = self.get_joint_velocities_decomp(joint)
+        return
+
 
 if __name__ == '__main__':
-    file_name = 'Barak_test'
+    file_name = 'f'
     qtm = QTM(file_name)
     data = qtm.data
     delta_t_sec = qtm.delta_t_sec
-    lables = qtm.lables
+    lables = qtm.labels
 
     joint_index = 0
     marker = data[joint_index]
-    marker_df = pd.DataFrame(data=marker.T[0], index=['x','y','z','r'], columns=None)
+    # marker_df = pd.DataFrame(data=marker.T[0], index=['x','y','z','r'], columns=None)
     
     # Split by axes
+    qtm.get_joint_velocities_decomp(joint='A')
     arr = [x,y,z] = qtm.data[joint_index][0:3]
 
-    
     # Compute local velocity and acceleration acoording to :
     # velocity = dx/dt, acceleration = dv/dt
     derive_by_t = lambda vec:  np.diff(vec) / delta_t_sec
     velocities = [v_x, v_y, v_z] = list(map(derive_by_t, [x,y,z]))
+    [vt_x, vt_y, vt_z] = qtm.get_joint_velocities_decomp(joint_index)
+    
     accelerations = [a_x, a_y, a_z] = list(map(derive_by_t, (v_x, v_y, v_z)))
-
-    # Furier 
+    # Fourier 
     v_fft_decomp = list(map(np.abs, map(fft, velocities)))
-    a_fft_decomp = list(map(abs,map(fft, accelerations)))
-
+    a_fft_decomp = list(map(np.abs,map(fft, accelerations)))
+    # exit()
     # Create plots
     dim = 3
     plot_linewidth = 0.5
