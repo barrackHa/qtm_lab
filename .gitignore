@@ -1,3 +1,6 @@
+#Misc
+.DS_Store
+
 # Ignore dir with data files (videos or other files exported from the system)
 data_files/
 
