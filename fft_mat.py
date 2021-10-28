@@ -33,19 +33,22 @@ class QTM():
         return
 
     @property
-    def markers(self):
-        return [ self.lables[0][0], self.lables[1][0] ]
-
-    @property
     def data(self):
-        return self.__data
+        """
+        Get a copy of the raw data
+        """
+        return self.__data.copy()
 
     @property
     def labels(self):
+        """
+        Returns a list of qtm labels in str form
+        """
         return [l[0] for l in self.__labels]
 
     @property
     def derive_by_t(self):
+        """Return a derivation opertor"""
         return lambda vec: np.diff(vec) / self.delta_t_sec
 
     def __load_mat_file__(self, file_name):
@@ -58,7 +61,7 @@ class QTM():
 
     def get_joint_velocities_decomp(self, joint):
         """
-        @Param joint is ither a label or a joint index as shown by self.labels_df
+        @Param joint is ither a label or a joint index as shown by listed by self.labels
         Returns the velocities decomposition by axis for the specified joint.
         """
         try:
@@ -73,11 +76,23 @@ class QTM():
                         .format(self.labels)
                 )
         # Return a list of velocities [v_x, v_y, v_z]
-        return list(map(self.derive_by_t, [x,y,z]))
+        return np.array(list(map(self.derive_by_t, [x,y,z])))
 
     def get_joint_accelerations_decomp(self, joint):
-        v_decomp = self.get_joint_velocities_decomp(joint)
-        return
+        """
+        @Param joint is ither a label or a joint index as listed by self.labels
+        Returns the accelerations decomposition by axis for the specified joint.
+        """
+        [v_x, v_y, v_z] = self.get_joint_velocities_decomp(joint)
+        return np.array(list(map(self.derive_by_t, [v_x, v_y, v_z])))
+
+    def get_fft_analysis(self, joint, operand='v'):
+        opearands_factory = {
+            'v' : self.get_joint_velocities_decomp(joint)
+        }
+        operand_vec = opearands_factory[operand]
+        return np.array(list(map(np.abs, map(fft, operand_vec))))
+        
 
 
 if __name__ == '__main__':
@@ -90,7 +105,7 @@ if __name__ == '__main__':
     joint_index = 0
     marker = data[joint_index]
     # marker_df = pd.DataFrame(data=marker.T[0], index=['x','y','z','r'], columns=None)
-    
+
     # Split by axes
     qtm.get_joint_velocities_decomp(joint='A')
     arr = [x,y,z] = qtm.data[joint_index][0:3]
@@ -99,13 +114,36 @@ if __name__ == '__main__':
     # velocity = dx/dt, acceleration = dv/dt
     derive_by_t = lambda vec:  np.diff(vec) / delta_t_sec
     velocities = [v_x, v_y, v_z] = list(map(derive_by_t, [x,y,z]))
-    [vt_x, vt_y, vt_z] = qtm.get_joint_velocities_decomp(joint_index)
+    tmp = [vt_x, vt_y, vt_z] = qtm.get_joint_velocities_decomp(joint_index)
     
     accelerations = [a_x, a_y, a_z] = list(map(derive_by_t, (v_x, v_y, v_z)))
+    [at_x, at_y, at_z] = qtm.get_joint_accelerations_decomp(joint_index)
+
+    print(a_x == at_x, a_y == at_y, (a_z == at_z).all())
     # Fourier 
     v_fft_decomp = list(map(np.abs, map(fft, velocities)))
+    class_v_fft_decomp = qtm.get_fft_analysis(joint_index, 'v')
+    print(
+        (v_fft_decomp[0] == class_v_fft_decomp[0]).all(),
+        (v_fft_decomp[1] == class_v_fft_decomp[1]).all(),
+        (v_fft_decomp[2] == class_v_fft_decomp[2]).all()
+    )
+
+    print(
+        # class_v_fft_decomp[0],
+        # class_v_fft_decomp[1],
+        # class_v_fft_decomp[2]
+        vt_x, vt_y, vt_z, tmp.T
+    )
+
     a_fft_decomp = list(map(np.abs,map(fft, accelerations)))
-    # exit()
+
+    # print(len(qtm.labels))
+    lables_dim = qtm.data.shape[1]
+    num_of_lables = qtm.data.shape[0]
+
+    print(qtm.data.reshape(num_of_lables * lables_dim , int(qtm.num_of_frames)).T)
+    exit()
     # Create plots
     dim = 3
     plot_linewidth = 0.5
