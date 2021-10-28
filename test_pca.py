@@ -9,7 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
 # Load .mat file
-file_name = 'Barak_test'
+file_name = 'test.mat'
 data_folder = Path.cwd() / Path("data_files/")
 file_to_open = data_folder / file_name
 mat = sio.loadmat(str(file_to_open))
@@ -36,7 +36,8 @@ data = labeled_traj['Data'][0][0]
 data_df_list = [ pd.DataFrame(data=data[i], index=None, columns=None) for i in range(len(lables)) ]
 
 new_data = data.reshape((len(lables)*4 , int(num_of_frames)))
-
+# print(new_data.shape, data.shape)
+# print(new_data.T)
 new_df = pd.DataFrame(
     data=new_data.T, 
     index=None, 
@@ -65,22 +66,23 @@ for l in lables:
         new_df[new_cul_name] = new_df[cul_to_derive].diff().div(delta_t_sec)
         velocity_indices.append(new_cul_name)
 
-v_is = []
-for l in lables:
-    l = l[0]
-    v = (new_df[l+'_Vx']*new_df[l+'_Vx']) + (new_df[l+'_Vy'] * new_df[l+'_Vy']) + (new_df[l+'_Vz'] * new_df[l+'_Vz'])
-    new_df[l + '_v'] = v
-    v_is.append(l + '_v')
-
-
+# print(new_df[velocity_indices].values[1:])
 
 # print(DataFrame(data = (new_df['A_v'] / new_df['B_v'])).describe())
 X = new_df[velocity_indices].values[1:]
+print(X)
 # Standardizing the features
+
 X = StandardScaler().fit_transform(X)
 
+exit()
 pca = PCA(n_components=len(velocity_indices))
 principalComponents = pca.fit_transform(X)
+
+print(principalComponents.shape)
+pca_df = pd.DataFrame(data=principalComponents) #, columns=pc_labales)
+print(pca_df.head())
+
 explained_variance_sum = sum(pca.explained_variance_)
 pc_labales = [
     'pc_{}({}%)'.format(str(i+1), 
@@ -92,26 +94,23 @@ pc_labales = [
 
 # print(pd.DataFrame(data=X, columns=velocity_indices).head())
 
-# print(principalComponents.shape)
-pca_df = pd.DataFrame(data=principalComponents, columns=pc_labales)
-# print(pca_df.head())
 print(new_df[velocity_indices].head())
 
 # print(pca.components_)
 # print(pca.explained_variance_)
 plt.bar(
     pc_labales, 
-    pca.explained_variance_
+    100 * (pca.explained_variance_ / explained_variance_sum)
 )
 
 fig = plt.figure()
 plt.plot(
     np.arange(1, len(pca.explained_variance_)+1 ), 
-    pca.explained_variance_, 
+    np.cumsum(pca.explained_variance_), 
     'ro-', linewidth=2
 )
 plt.title('Scree Plot')
 
 pca_df.plot.scatter(x=pc_labales[0], y=pc_labales[1])
-# plt.show()
+plt.show()
 
