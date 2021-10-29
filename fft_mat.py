@@ -26,6 +26,8 @@ class QTM():
         self.labels_df = pd.DataFrame(data=self.labels , index=None, columns=['Lable_Name'])
         self.data_count = self.labeled_traj['Count'][0][0].flatten()[0]
         self.__data = self.labeled_traj['Data'][0][0]
+        self.__velocities = None
+        self.__accelerations = None
         self.data_df_list = [ 
             pd.DataFrame(data=self.data[i], index=['x','y','z','r'], columns=None) \
             for i in range(len(self.labels)
@@ -34,22 +36,36 @@ class QTM():
 
     @property
     def data(self):
-        """
-        Get a copy of the raw data
-        """
+        """ Get a copy of the raw data """
         return self.__data.copy()
 
     @property
+    def velocities(self):
+        """ Get the velocities analysis """
+        if not (self.__velocities is None) :
+            self.analys_velocities()    
+        return self.__velocities
+
+    @property
+    def accelerations(self):
+        """ Get the accelerations analysis """
+        if not (self.__accelerations is None) :
+            self.analys_accelerations()    
+        return self.__accelerations
+        
+    @property
     def labels(self):
-        """
-        Returns a list of qtm labels in str form
-        """
+        """ Returns a list of qtm labels in str form """
         return [l[0] for l in self.__labels]
 
     @property
     def derive_by_t(self):
         """Return a derivation opertor"""
         return lambda vec: np.diff(vec) / self.delta_t_sec
+
+    def derivation_operator_factory(self):
+        # TODO:// add more derivation options
+        return self.derive_by_t
 
     def __load_mat_file__(self, file_name):
         """
@@ -58,6 +74,24 @@ class QTM():
         data_folder = Path.cwd() / Path("data_files/")
         file_to_open = data_folder / file_name
         return sio.loadmat(str(file_to_open))
+
+    def analys_velocities(self):
+        """ Analys velocities from data """
+        derivation_operator = self.derivation_operator_factory()
+        self.__velocities = np.array(list(map(
+            lambda lbl_3d: np.array(list(map(derivation_operator, lbl_3d))),
+            map(lambda lbl_trej: lbl_trej[0:3], self.__data)
+        )))
+        return self.__velocities
+    
+    def analys_accelerations(self):
+        """ Analys velocities from data """
+        derivation_operator = self.derivation_operator_factory()
+        self.__accelerations = np.array(list(map(
+            lambda lbl_v_3d: np.array(list(map(derivation_operator, lbl_v_3d))),
+            map(lambda lbl_vels: lbl_vels[0:3], self.__velocities)
+        )))
+        return self.__accelerations
 
     def get_joint_velocities_decomp(self, joint):
         """
@@ -116,6 +150,9 @@ if __name__ == '__main__':
     velocities = [v_x, v_y, v_z] = list(map(derive_by_t, [x,y,z]))
     tmp = [vt_x, vt_y, vt_z] = qtm.get_joint_velocities_decomp(joint_index)
     
+    new_velocities = qtm.analys_velocities()
+    print((qtm.velocities[joint_index] == np.array(tmp)).all())
+
     accelerations = [a_x, a_y, a_z] = list(map(derive_by_t, (v_x, v_y, v_z)))
     [at_x, at_y, at_z] = qtm.get_joint_accelerations_decomp(joint_index)
 
