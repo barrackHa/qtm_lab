@@ -15,4 +15,6 @@ def mat_4_by_4_file():
 def test_4by4_shape(mat_4_by_4_file):
     print(mat_4_by_4_file.data.shape)
     assert mat_4_by_4_file.data.shape == (2,4,10)
-    
+
+if __name__ == '__main__':
+    pytest.main()
