@@ -5,6 +5,8 @@ import pandas as pd
 import scipy.io as sio
 import matplotlib.pyplot as plt
 from scipy.fft import fft, fftfreq
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 
 
 class QTM():
@@ -28,6 +30,7 @@ class QTM():
         self.__data = self.labeled_traj['Data'][0][0]
         self.__velocities = None
         self.__accelerations = None
+        self.__v_pca = None
         self.data_df_list = [ 
             pd.DataFrame(data=self.data[i], index=['x','y','z','r'], columns=None) \
             for i in range(len(self.labels)
@@ -42,17 +45,24 @@ class QTM():
     @property
     def velocities(self):
         """ Get the velocities analysis """
-        if not (self.__velocities is None) :
+        if self.__velocities is None:
             self.analys_velocities()    
         return self.__velocities
 
     @property
     def accelerations(self):
         """ Get the accelerations analysis """
-        if not (self.__accelerations is None) :
+        if self.__accelerations is None:
             self.analys_accelerations()    
         return self.__accelerations
-        
+
+    @property
+    def v_pca(self):
+        """ Get the velocities analysis """
+        if not (self.__v_pca is None) :
+            self.fit_velocity_pca()    
+        return self.__v_pca
+
     @property
     def labels(self):
         """ Returns a list of qtm labels in str form """
@@ -68,9 +78,7 @@ class QTM():
         return self.derive_by_t
 
     def __load_mat_file__(self, file_name):
-        """
-        Loads a .mat file into a dict 
-        """
+        """ Loads a .mat file into a dict """
         data_folder = Path.cwd() / Path("data_files/")
         file_to_open = data_folder / file_name
         return sio.loadmat(str(file_to_open))
@@ -121,16 +129,26 @@ class QTM():
         return np.array(list(map(self.derive_by_t, [v_x, v_y, v_z])))
 
     def get_fft_analysis(self, joint, operand='v'):
+        # TODO:// fix this
         opearands_factory = {
             'v' : self.get_joint_velocities_decomp(joint)
         }
         operand_vec = opearands_factory[operand]
         return np.array(list(map(np.abs, map(fft, operand_vec))))
+
+    def fit_velocity_pca(self):
+        num_of_lables, lables_dim, num_of_frames = self.velocities.shape
+        pca_input = self.velocities.reshape(num_of_lables * lables_dim , num_of_frames).T
+        pca_input = StandardScaler().fit_transform(pca_input)
+        pca = PCA(n_components=(num_of_lables * lables_dim))
+        principalComponents = pca.fit_transform(pca_input)
+        self.__v_pca = pca
+        return principalComponents
         
 
 
 if __name__ == '__main__':
-    file_name = 'f'
+    file_name = 'circ_motion_1D_2labls'
     qtm = QTM(file_name)
     data = qtm.data
     delta_t_sec = qtm.delta_t_sec
@@ -151,27 +169,29 @@ if __name__ == '__main__':
     tmp = [vt_x, vt_y, vt_z] = qtm.get_joint_velocities_decomp(joint_index)
     
     new_velocities = qtm.analys_velocities()
-    print((qtm.velocities[joint_index] == np.array(tmp)).all())
+    # print(qtm.data)
+    # print(new_velocities)
+    # print((qtm.velocities[joint_index] == np.array(tmp)).all())
 
     accelerations = [a_x, a_y, a_z] = list(map(derive_by_t, (v_x, v_y, v_z)))
     [at_x, at_y, at_z] = qtm.get_joint_accelerations_decomp(joint_index)
 
-    print(a_x == at_x, a_y == at_y, (a_z == at_z).all())
+    # print(a_x == at_x, a_y == at_y, (a_z == at_z).all())
     # Fourier 
     v_fft_decomp = list(map(np.abs, map(fft, velocities)))
     class_v_fft_decomp = qtm.get_fft_analysis(joint_index, 'v')
-    print(
-        (v_fft_decomp[0] == class_v_fft_decomp[0]).all(),
-        (v_fft_decomp[1] == class_v_fft_decomp[1]).all(),
-        (v_fft_decomp[2] == class_v_fft_decomp[2]).all()
-    )
+    # print(
+    #     (v_fft_decomp[0] == class_v_fft_decomp[0]).all(),
+    #     (v_fft_decomp[1] == class_v_fft_decomp[1]).all(),
+    #     (v_fft_decomp[2] == class_v_fft_decomp[2]).all()
+    # )
 
-    print(
+    # print(
         # class_v_fft_decomp[0],
         # class_v_fft_decomp[1],
         # class_v_fft_decomp[2]
-        vt_x, vt_y, vt_z, tmp.T
-    )
+    #     vt_x, vt_y, vt_z, tmp.T
+    # )
 
     a_fft_decomp = list(map(np.abs,map(fft, accelerations)))
 
@@ -179,7 +199,8 @@ if __name__ == '__main__':
     lables_dim = qtm.data.shape[1]
     num_of_lables = qtm.data.shape[0]
 
-    print(qtm.data.reshape(num_of_lables * lables_dim , int(qtm.num_of_frames)).T)
+    # print(qtm.data.reshape(num_of_lables * lables_dim , int(qtm.num_of_frames)).T)
+    qtm.fit_velocity_pca()
     exit()
     # Create plots
     dim = 3

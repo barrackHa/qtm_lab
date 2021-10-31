@@ -9,7 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
 # Load .mat file
-file_name = 'test.mat'
+file_name = 'circ_motion_1D_2labls.mat'
 data_folder = Path.cwd() / Path("data_files/")
 file_to_open = data_folder / file_name
 mat = sio.loadmat(str(file_to_open))
@@ -70,18 +70,17 @@ for l in lables:
 
 # print(DataFrame(data = (new_df['A_v'] / new_df['B_v'])).describe())
 X = new_df[velocity_indices].values[1:]
-print(X)
+# print(X, X.shape)
 # Standardizing the features
 
 X = StandardScaler().fit_transform(X)
 
-exit()
 pca = PCA(n_components=len(velocity_indices))
 principalComponents = pca.fit_transform(X)
 
-print(principalComponents.shape)
+# print(principalComponents.shape)
 pca_df = pd.DataFrame(data=principalComponents) #, columns=pc_labales)
-print(pca_df.head())
+# print(pca_df.head())
 
 explained_variance_sum = sum(pca.explained_variance_)
 pc_labales = [
@@ -94,10 +93,10 @@ pc_labales = [
 
 # print(pd.DataFrame(data=X, columns=velocity_indices).head())
 
-print(new_df[velocity_indices].head())
+# print(new_df[velocity_indices].head())
 
-# print(pca.components_)
-# print(pca.explained_variance_)
+print(pca.components_)
+print(pca.explained_variance_)
 plt.bar(
     pc_labales, 
     100 * (pca.explained_variance_ / explained_variance_sum)
@@ -111,6 +110,11 @@ plt.plot(
 )
 plt.title('Scree Plot')
 
-pca_df.plot.scatter(x=pc_labales[0], y=pc_labales[1])
+# print(pc_labales)
+# print(pca_df)
+# exit()
+pca_df.plot.scatter(x=0, y=1)
+
+# plt.draw()
 plt.show()
 
