@@ -59,7 +59,7 @@ class QTM():
     @property
     def v_pca(self):
         """ Get the velocities analysis """
-        if not (self.__v_pca is None) :
+        if self.__v_pca is None:
             self.fit_velocity_pca()    
         return self.__v_pca
 
@@ -144,11 +144,41 @@ class QTM():
         principalComponents = pca.fit_transform(pca_input)
         self.__v_pca = pca
         return principalComponents
+
+    def plot_v_pca_explained_variance(self, show=False):
+        # TODO:// write save to file options
+        explained_variance_sum = sum(self.v_pca.explained_variance_)
+        pc_labales = [
+            'pc_{}({}%)'.format(str(i+1), 
+                int(100 * (self.v_pca.explained_variance_[i] / explained_variance_sum))
+            ) \
+            for i in range(len(self.v_pca.explained_variance_))
+        ]
+        plt.subplot(1, 2, 1)
+        plt.bar(
+            pc_labales, 
+            100 * (self.v_pca.explained_variance_ / explained_variance_sum)
+        )
+        plt.title('PC Bars')
+        plt.ylabel('Percentage of variance explained\n by each of the\n selected components')
+        
+        plt.subplot(1, 2, 2)
+        plt.plot(
+            np.arange(1, len(self.v_pca.explained_variance_)+1 ), 
+            np.cumsum(self.v_pca.explained_variance_ratio_), 
+            'ro-', linewidth=2
+        )
+        plt.title('PC Scree Plot')
+
+        if show:
+            plt.show()
+
         
 
 
 if __name__ == '__main__':
     file_name = 'circ_motion_1D_2labls'
+    # file_name = 'Barak_test'
     qtm = QTM(file_name)
     data = qtm.data
     delta_t_sec = qtm.delta_t_sec
@@ -201,6 +231,7 @@ if __name__ == '__main__':
 
     # print(qtm.data.reshape(num_of_lables * lables_dim , int(qtm.num_of_frames)).T)
     qtm.fit_velocity_pca()
+    qtm.plot_v_pca_explained_variance(show=True)
     exit()
     # Create plots
     dim = 3
