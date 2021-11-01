@@ -9,7 +9,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
 # Load .mat file
-file_name = 'circ_motion_1D_2labls.mat'
+# file_name = 'circ_motion_1D_2labls.mat'
+file_name = 'Barak_test'
 data_folder = Path.cwd() / Path("data_files/")
 file_to_open = data_folder / file_name
 mat = sio.loadmat(str(file_to_open))
@@ -111,7 +112,7 @@ plt.plot(
 plt.title('Scree Plot')
 
 # print(pc_labales)
-# print(pca_df)
+print(pca_df.head())
 # exit()
 pca_df.plot.scatter(x=0, y=1)
 
