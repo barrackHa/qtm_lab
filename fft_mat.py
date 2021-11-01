@@ -31,6 +31,7 @@ class QTM():
         self.__velocities = None
         self.__accelerations = None
         self.__v_pca = None
+        self.__v_pca_principal_components = None
         self.data_df_list = [ 
             pd.DataFrame(data=self.data[i], index=['x','y','z','r'], columns=None) \
             for i in range(len(self.labels)
@@ -62,6 +63,13 @@ class QTM():
         if self.__v_pca is None:
             self.fit_velocity_pca()    
         return self.__v_pca
+
+    @property
+    def v_pca_principal_components(self):
+        """ Get the velocities data transformed into PC basis """
+        if self.__v_pca is None:
+            return self.fit_velocity_pca()
+        return self.__v_pca_principal_components
 
     @property
     def labels(self):
@@ -128,21 +136,15 @@ class QTM():
         [v_x, v_y, v_z] = self.get_joint_velocities_decomp(joint)
         return np.array(list(map(self.derive_by_t, [v_x, v_y, v_z])))
 
-    def get_fft_analysis(self, joint, operand='v'):
-        # TODO:// fix this
-        opearands_factory = {
-            'v' : self.get_joint_velocities_decomp(joint)
-        }
-        operand_vec = opearands_factory[operand]
-        return np.array(list(map(np.abs, map(fft, operand_vec))))
-
     def fit_velocity_pca(self):
+        """ Run PCA on the velocity data """
         num_of_lables, lables_dim, num_of_frames = self.velocities.shape
         pca_input = self.velocities.reshape(num_of_lables * lables_dim , num_of_frames).T
         pca_input = StandardScaler().fit_transform(pca_input)
         pca = PCA(n_components=(num_of_lables * lables_dim))
         principalComponents = pca.fit_transform(pca_input)
         self.__v_pca = pca
+        self.__v_pca_principal_components = principalComponents
         return principalComponents
 
     def plot_v_pca_explained_variance(self, show=False):
@@ -154,31 +156,55 @@ class QTM():
             ) \
             for i in range(len(self.v_pca.explained_variance_))
         ]
-        plt.subplot(1, 2, 1)
-        plt.bar(
+        fig = plt.figure() 
+        fig.suptitle('{}'.format('PCA Analysis'))
+        ax1 = fig.add_subplot(1, 2, 1)
+        ax1.bar(
             pc_labales, 
             100 * (self.v_pca.explained_variance_ / explained_variance_sum)
         )
-        plt.title('PC Bars')
-        plt.ylabel('Percentage of variance explained\n by each of the\n selected components')
+        ax1.set(
+            ylabel='Percentage of variance explained\n by each of the\n selected components',
+            title='PC Bars'
+        )
         
-        plt.subplot(1, 2, 2)
-        plt.plot(
-            np.arange(1, len(self.v_pca.explained_variance_)+1 ), 
-            np.cumsum(self.v_pca.explained_variance_ratio_), 
+        ax2 = fig.add_subplot(1, 2, 2)
+        ax2.plot(
+            np.arange(0, len(self.v_pca.explained_variance_)+1 ), 
+            np.cumsum(
+                np.concatenate((
+                    np.array([0], dtype='float64'),
+                    self.v_pca.explained_variance_ratio_
+            ))), 
             'ro-', linewidth=2
         )
-        plt.title('PC Scree Plot')
+        ax2.set(title='PC Scree Plot')
 
         if show:
             plt.show()
+        return
 
-        
+    def plot_v_pca_data_points(self, show=False):
+        # TODO:// write save to file options and a description
+        principalComponents = self.v_pca_principal_components
+        X, Y = principalComponents.T[0:2]
+        fig = plt.figure()
+        fig.suptitle('{}'.format('Velocity Data Points In PC Space'))
+        ax = fig.add_subplot(111)
+        ax.set(xlabel='pc1', ylabel='pc2')
+        ax.scatter(X,Y, s=2)
+        if show:
+            plt.show()
+        return
 
+    def get_fft_analysis(self, velocity=True, acceleration=False, unified=False):
+        if velocity:
+
+        return
 
 if __name__ == '__main__':
-    file_name = 'circ_motion_1D_2labls'
-    # file_name = 'Barak_test'
+    # file_name = 'circ_motion_1D_2labls'
+    file_name = 'Barak_test'
     qtm = QTM(file_name)
     data = qtm.data
     delta_t_sec = qtm.delta_t_sec
@@ -230,8 +256,9 @@ if __name__ == '__main__':
     num_of_lables = qtm.data.shape[0]
 
     # print(qtm.data.reshape(num_of_lables * lables_dim , int(qtm.num_of_frames)).T)
-    qtm.fit_velocity_pca()
-    qtm.plot_v_pca_explained_variance(show=True)
+    # qtm.fit_velocity_pca()
+    # qtm.plot_v_pca_explained_variance(show=True)
+    # qtm.plot_v_pca_data_points(show=True)
     exit()
     # Create plots
     dim = 3
