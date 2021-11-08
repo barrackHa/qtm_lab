@@ -32,6 +32,7 @@ class QTM():
         self.__accelerations = None
         self.__v_pca = None
         self.__v_pca_principal_components = None
+        self.__fft_analysis = None
         self.data_df_list = [ 
             pd.DataFrame(data=self.data[i], index=['x','y','z','r'], columns=None) \
             for i in range(len(self.labels)
@@ -191,22 +192,53 @@ class QTM():
         fig = plt.figure()
         fig.suptitle('{}'.format('Velocity Data Points In PC Space'))
         ax = fig.add_subplot(111)
-        ax.set(xlabel='pc1', ylabel='pc2')
+        ax.set(xlabel='pc1', ylabel='pc2', xlim = [-10, 10], ylim = [-10, 10])
         ax.scatter(X,Y, s=2)
         if show:
             plt.show()
         return
 
-    def get_fft_analysis(self, velocity=True, acceleration=False, unified=False):
+    def get_fft_analysis(self, velocity=True, acceleration=False):
+        fft_dict = {'velocity': {}, 'acceleration': {}}
         if velocity:
+            fft_dict['velocity']['fft'] = list(map(np.abs,map(fft, self.velocities)))
+            fft_dict['velocity']['fftfreq'] = fftfreq(self.velocities[0].shape[0], self.delta_t_sec)
+        if acceleration:
+            fft_dict['acceleration']['fft'] = list(map(np.abs,map(fft, self.accelerations)))
+            fft_dict['acceleration']['fftfreq'] =  fftfreq(self.accelerations[0].shape[0], self.delta_t_sec)
+        self.__fft_analysis = fft_dict
+        print()
+        return fft_dict
 
+    def plot_fft(self, markers):
+        l = len(self.labels) - 1
+        print(self.__fft_analysis['velocity']['fft'][0][0].shape)
+        print(self.__fft_analysis['velocity']['fftfreq'])
+        for mark in set(markers):
+            mark = int(mark)
+            if mark < 0 or l < mark :
+                raise Exception(
+                    'Marker index must be between 0 and {} but got {}'.
+                    format(l, mark)
+                )
+            fig = plt.figure() 
+            fig.add_axes() 
+            ax = fig.add_subplot(111)
+            ax.plot(
+                self.__fft_analysis['velocity']['fftfreq'],
+                self.__fft_analysis['velocity']['fft'][0][0],
+                plot_linewidth=0.5
+            )
+        plt.show()
         return
 
 if __name__ == '__main__':
     # file_name = 'circ_motion_1D_2labls'
-    file_name = 'Barak_test'
+    # file_name = 'Barak_test'
+    file_name = 'x_axis_broom_barak'
     qtm = QTM(file_name)
     data = qtm.data
+    
     delta_t_sec = qtm.delta_t_sec
     lables = qtm.labels
 
@@ -215,7 +247,7 @@ if __name__ == '__main__':
     # marker_df = pd.DataFrame(data=marker.T[0], index=['x','y','z','r'], columns=None)
 
     # Split by axes
-    qtm.get_joint_velocities_decomp(joint='A')
+    qtm.get_joint_velocities_decomp(joint=0)
     arr = [x,y,z] = qtm.data[joint_index][0:3]
 
     # Compute local velocity and acceleration acoording to :
@@ -235,7 +267,7 @@ if __name__ == '__main__':
     # print(a_x == at_x, a_y == at_y, (a_z == at_z).all())
     # Fourier 
     v_fft_decomp = list(map(np.abs, map(fft, velocities)))
-    class_v_fft_decomp = qtm.get_fft_analysis(joint_index, 'v')
+    # class_v_fft_decomp = qtm.get_fft_analysis(joint_index, 'v')
     # print(
     #     (v_fft_decomp[0] == class_v_fft_decomp[0]).all(),
     #     (v_fft_decomp[1] == class_v_fft_decomp[1]).all(),
@@ -256,9 +288,13 @@ if __name__ == '__main__':
     num_of_lables = qtm.data.shape[0]
 
     # print(qtm.data.reshape(num_of_lables * lables_dim , int(qtm.num_of_frames)).T)
-    # qtm.fit_velocity_pca()
-    # qtm.plot_v_pca_explained_variance(show=True)
-    # qtm.plot_v_pca_data_points(show=True)
+    print(qtm.data)
+    qtm.fit_velocity_pca()
+    qtm.plot_v_pca_explained_variance(show=True)
+    qtm.plot_v_pca_data_points(show=True)
+    
+    # fft_analysis = qtm.get_fft_analysis(velocity=True, acceleration=False)
+    # qtm.plot_fft([0])
     exit()
     # Create plots
     dim = 3
